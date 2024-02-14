@@ -1,0 +1,100 @@
+
+//+------------------------------------------------------------------+
+//|                                                      Breakout Scalp Indicator |
+//|                                      Copyright 2021, Forex Robot Easy Team, forexroboteasy.com   |
+//+------------------------------------------------------------------+
+
+#property copyright 'Copyright 2021, Forex Robot Easy Team, forexroboteasy.com'
+#property link      'forexroboteasy.com'
+#property version   '1.00'
+#property strict
+
+// Input parameters
+input int timeFrame = PERIOD_M15;
+input int supportResistancePeriods = 20;
+input int orderBlockPeriods = 10;
+
+// Global variables
+double supportLevels[];
+double resistanceLevels[];
+double orderBlocks[];
+
+//+------------------------------------------------------------------+
+//| Custom indicator initialization function                         |
+//+------------------------------------------------------------------+
+int OnInit()
+{
+    // Set the indicator buffers
+    SetIndexBuffer(0, supportLevels);
+    SetIndexBuffer(1, resistanceLevels);
+    SetIndexBuffer(2, orderBlocks);
+
+    // Set the indicator labels
+    SetIndexLabel(0, 'Support Levels');
+    SetIndexLabel(1, 'Resistance Levels');
+    SetIndexLabel(2, 'Order Blocks');
+
+    return(INIT_SUCCEEDED);
+}
+
+//+------------------------------------------------------------------+
+//| Custom indicator iteration function                              |
+//+------------------------------------------------------------------+
+int OnCalculate(const int rates_total,
+                const int prev_calculated,
+                const datetime &time[],
+                const double &open[],
+                const double &high[],
+                const double &low[],
+                const double &close[],
+                const long &tick_volume[],
+                const long &volume[],
+                const int &spread[])
+{
+    int limit = rates_total - prev_calculated;
+
+    // Calculate support and resistance levels
+    for (int i = 0; i < limit; i++)
+    {
+        double supportLevel = Low[iLowest(NULL, timeFrame, MODE_LOW, supportResistancePeriods, i)];
+        double resistanceLevel = High[iHighest(NULL, timeFrame, MODE_HIGH, supportResistancePeriods, i)];
+
+        supportLevels[i] = supportLevel;
+        resistanceLevels[i] = resistanceLevel;
+    }
+
+    // Calculate order blocks
+    for (int i = 0; i < limit; i++)
+    {
+        double currentLow = Low[i];
+        double previousLow = Low[i - 1];
+        double nextLow = Low[i + 1];
+
+        if (currentLow < previousLow && currentLow < nextLow)
+        {
+            orderBlocks[i] = currentLow;
+        }
+        else
+        {
+            orderBlocks[i] = 0.0;
+        }
+    }
+
+    // Generate trading signals
+    for (int i = 0; i < limit; i++)
+    {
+        if (orderBlocks[i] > 0.0)
+        {
+            // Place a buy trade at the order block
+            Print('Buy at ', orderBlocks[i]);
+        }
+
+        if (supportLevels[i] > 0.0)
+        {
+            // Place a sell trade at the support level
+            Print('Sell at ', supportLevels[i]);
+        }
+    }
+
+    return(rates_total);
+}
